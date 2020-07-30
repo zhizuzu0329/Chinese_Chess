@@ -52,7 +52,7 @@ public class chess {
  * @param player 玩家（1为红方，0为黑方）
  * @param typeName 棋子名（"将"、"帅"......）
  * @param x  （棋盘对应二维数组的下标之x，0~9）
- * @param y  （棋盘对应二维数组的下标之y，0~80）
+ * @param y  （棋盘对应二维数组的下标之y，0~8）
  */
     public chess( int player,String typeName,int x,int y) {
         this.player = player;
