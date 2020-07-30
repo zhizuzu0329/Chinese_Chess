@@ -6,7 +6,8 @@ import java.awt.Graphics;
 import java.awt.Image;
 //一个抽象类，提供GUI底层的java访问。
 import java.awt.Toolkit;
-
+//接口，用于返回图像的高度、宽度、属性。
+import java.awt.image.ImageObserver;
 
 //JPanel是一般轻量级容器。
 import javax.swing.JPanel;
@@ -137,7 +138,7 @@ public class chess {
      * observer - 转换了更多图像时要通知的对象。
      */
     protected void paint(Graphics g,JPanel i){
-        g.drawImage(chessImage,leftX+x*60,leftY+y*58,50,50, i);
+        g.drawImage(chessImage,leftX+x*60,leftY+y*58,50,50, (ImageObserver)i);
     }
     /**
      * 函数{@code drawSelectedChess(Graphics g)}用于绘制选择棋子时的框.
