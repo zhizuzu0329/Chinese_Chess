@@ -1,15 +1,10 @@
 package chinese_chess;
 
-//导入包，用于创建几何图形。
 import java.awt.Graphics;
-//用于创建和修改图像。
 import java.awt.Image;
-//一个抽象类，提供GUI底层的java访问。
 import java.awt.Toolkit;
-//接口，用于返回图像的高度、宽度、属性。
 import java.awt.image.ImageObserver;
 
-//JPanel是一般轻量级容器。
 import javax.swing.JPanel;
 
 /**
@@ -48,11 +43,11 @@ public class chess {
      */
     private int leftX=30,leftY=35;
 /**
- * {@code chess} 构造方法
- * @param player 玩家（1为红方，0为黑方）
- * @param typeName 棋子名（"将"、"帅"......）
- * @param x  （棋盘对应二维数组的下标之x，0~9）
- * @param y  （棋盘对应二维数组的下标之y，0~8）
+ * {@code chess} 构造方法<br/>
+ * @param player 玩家（1为红方，0为黑方）<br/>
+ * @param typeName 棋子名（"将"、"帅"......）<br/>
+ * @param x  （棋盘对应二维数组的下标之x，0~9）<br/>
+ * @param y  （棋盘对应二维数组的下标之y，0~8）<br/>
  */
     public chess( int player,String typeName,int x,int y) {
         this.player = player;
@@ -114,9 +109,9 @@ public class chess {
         }
     }
     /**
-     * 函数{@code setPoint(int x, int y)}用来把棋子放到x,y坐标.
-     * @param x  棋盘上第x(0~9)条横线.
-     * @param y  棋盘上第y(0~8)条竖线.
+     * 函数{@code setPoint(int x, int y)}用来把棋子放到x,y坐标.<br/>
+     * @param x  棋盘上第x(0~9)条横线.<br/>
+     * @param y  棋盘上第y(0~8)条竖线.<br/>
       */
     public  void setPoint(int x, int y){
         this.x=x;
@@ -127,23 +122,26 @@ public class chess {
      */
     public void reversePoints(){
         x=9-x;
+        y=8-y;
     }
     /**
-     * 函数{@code paint(Graphics g,JPanel i)}在指定的Jpanel上绘制棋子.
-     * img - 要绘制的指定图像。如果 img 为 null，则此方法不执行任何操作.
-     * x - x 坐标。
-     * y - y 坐标。
-     * width - 矩形的宽度。
-     * height - 矩形的高度。
-     * observer - 转换了更多图像时要通知的对象。
+     * 函数{@code paint(Graphics g,JPanel i)}在指定的Jpanel上绘制棋子.<br/>
+     * img - 要绘制的指定图像。如果 img 为 null，则此方法不执行任何操作.<br/>
+     * x - x 坐标。<br/>
+     * y - y 坐标。<br/>
+     * width - 矩形的宽度。<br/>
+     * height - 矩形的高度。<br/>
+     * observer - 转换了更多图像时要通知的对象。<br/>
      */
     protected void paint(Graphics g,JPanel i){
+
         g.drawImage(chessImage,leftX+x*60,leftY+y*58,50,50, (ImageObserver)i);
     }
     /**
      * 函数{@code drawSelectedChess(Graphics g)}用于绘制选择棋子时的框.
      */
-    public void drawSelectedChess(Graphics g){
+    public void drawSelectedChess(Graphics g)
+    {
         g.drawRect(leftX+x*60,leftY+y*58,50,50);
     }
 }
