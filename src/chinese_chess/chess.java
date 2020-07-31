@@ -3,7 +3,6 @@ package chinese_chess;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Toolkit;
-import java.awt.image.ImageObserver;
 
 import javax.swing.JPanel;
 
@@ -135,13 +134,13 @@ public class chess {
      */
     protected void paint(Graphics g,JPanel i){
 
-        g.drawImage(chessImage,leftX+x*60,leftY+y*58,50,50, (ImageObserver)i);
+        g.drawImage(chessImage,leftX+x*62,leftY+y*58,50,50,i);
     }
     /**
      * 函数{@code drawSelectedChess(Graphics g)}用于绘制选择棋子时的框.
      */
     public void drawSelectedChess(Graphics g)
     {
-        g.drawRect(leftX+x*60,leftY+y*58,50,50);
+        g.drawRect(leftX+x*62,leftY+y*58,50,50);
     }
 }

@@ -49,7 +49,7 @@ public class chessboard  {
 public chessboard(){
     initMap() ;
     message = "程序处于等待联机状态！";
-    addMouseListener(new MouseAdapter() {       //？？？？？？？？？
+    addMouseListener(new MouseAdapter() {       //不太懂
         @Override
         public void  mouseClicked(MouseEvent e){
             if(isMyTurn == false){
