@@ -756,12 +756,11 @@ public class chessboard extends JPanel implements Runnable {
             }
         }
     }
-
     @Override
     public void run() {
         try {
-            System.out.println("我是客户端，我绑定的端口是" + myPort);
-            DatagramSocket s = new DatagramSocket((myPort));
+            System.out.println("我是客户端，我绑定的端口是" +myPort);
+            DatagramSocket s = new DatagramSocket(myPort);
             byte[] data = new byte[100];
             DatagramPacket dgp = new DatagramPacket(data, data.length);
             while (flag) {
@@ -780,9 +779,8 @@ public class chessboard extends JPanel implements Runnable {
                     }
                     //发送联机成功消息
                     send("conn|");
-                } else
+                } else if ("conn".equals(array[0])) {
                     //我加入别人的战局，我是红方
-                    if ("conn".equals(array[0])) {
                         localPlayer = RED_PLAYER;
                         startNewGame(localPlayer);
                         if (localPlayer == BLACK_PLAYER) {
@@ -797,7 +795,6 @@ public class chessboard extends JPanel implements Runnable {
                             } else {
                                 JOptionPane.showConfirmDialog(null, "黑方赢了，你可以重新开始", "你赢了", JOptionPane.DEFAULT_OPTION);
                             }
-
                         }
                         if ("红方赢了".equals(array[1])) {
                             if (localPlayer == RED_PLAYER) {
@@ -809,9 +806,8 @@ public class chessboard extends JPanel implements Runnable {
                         message = "你可以重新开局";
                         //可以点击开始按钮
                         gameclient.buttonStart.setEnable(true);
-                    } else
-                        //对方的走棋信息
-                        if ("move".equals(array[1])) {
+                    } else if ("move".equals(array[1])) {
+                            //对方的走棋信息
                             System.out.println("接受信息" + array[0] + "|" + array[1] + "|" + array[2] + "|" + array[3] + "|" + array[4] + "|" + array[5] + "|" + array[6] + "|");
                             int index = Integer.parseInt(array[1]);
                             x2 = Integer.parseInt(array[2]);
@@ -838,17 +834,19 @@ public class chessboard extends JPanel implements Runnable {
                             }
                             repaint();
                             isMyTurn = true;
-                        } else if ("quit".equals(array[0])) {
+                    } else if ("quit".equals(array[0])) {
                             JOptionPane.showConfirmDialog(null, "对方退出了，游戏结束！", "提示", JOptionPane.DEFAULT_OPTIONO);
                             message = "对方退出了，游戏结束！";
                             gameclient.buttonStart.setEnabled(true);
-                        } else if ("lose".equals(array[0])) {
+                    } else if ("lose".equals(array[0])) {
                             JOptionPane.showConfirmDialog(null, "恭喜你，对方认输了！", "你赢了", JOptionPane.DEFAULT_OPTIONO);
                             setMyTurn(false);
                             gameclient.buttonStart.setEnabled(true);
-                        } else if ("ask".equals(array[0])) {
+                    } else if ("ask".equals(array[0])) {
+
                             String msg = "对方请求悔棋，是否同意？";
                             int type = JOptionPane.YES_NO_OPTION;
+
                             String title = "请求悔棋";
                             int choice = 0;
                             choice = JOptionPane.showConfirmDialog(null, msg, title, type);
@@ -858,10 +856,12 @@ public class chessboard extends JPanel implements Runnable {
                                 send("agree|");
                                 message = "同意对方悔棋，对方正在思考";
                                 setMyTurn(false);
+
                                 node temp = list.get(list.size() - 1);
                                 list.remove(list.size() - 1);
                                 //如果我是红方
                                 if (localPlayer == RED_PLAYER) {
+
                                     if (temp.index >= 16) {
                                         //上一步是我下的，需要回退2步
                                         rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
@@ -883,6 +883,7 @@ public class chessboard extends JPanel implements Runnable {
                                         }
 
                                     }
+
                                 } else {
                                     //如果我是黑方
                                     if (temp.index < 16) {
@@ -898,82 +899,89 @@ public class chessboard extends JPanel implements Runnable {
                                         if (temp.eatChessIndex != -1) {
                                             //上一步吃了子,将被吃子重新放回棋盘
                                             resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        } else {
+                                        }
+
+                                    } else {
                                             //上一步是对方下的，需要回退1步
                                             rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
                                             if (temp.eatChessIndex != -1) {
                                                 resetChess(temp.eatChessIndex, temp.x, temp.y);
                                             }
 
-                                        }
-                                    }
-                                    repaint();
-                                }
-                            } else if ("agree".equals(array[0])) {
-                                //对方同意悔棋
-                                JOptionPane.showConfirmDialog(null, "对方同意了你的悔棋要求");
-                                node temp = list.get(list.size() - 1);
-                                list.remove(list.size() - 1);
-                                if (localPlayer == RED_PLAYER) {
-                                    if (temp.index >= 16) {
-                                        //上一步是我下的，需要回退1步
-                                        rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        }
-
-                                    } else {
-                                        //上一步是对方下的，需要回退2步
-                                        rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        }
-
-
-                                        //第二次回退
-                                        temp = list.get(list.size() - 1);
-                                        list.remove(list.size() - 1);
-                                        rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        }
-                                    }
-                                } else {
-                                    //如果我是黑方
-                                    if (temp.index < 16) {
-                                        //回退一步
-                                        rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        }
-                                    } else {
-                                        //上一步是对方下的，需要回退1步
-                                        rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-                                        }
-                                        temp = list.get(list.size() - 1);
-                                        list.remove(list.size() - 1);
-
-                                        rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
-                                        if (temp.eatChessIndex != -1) {
-                                            //上一步吃了子,将被吃子重新放回棋盘
-                                            resetChess(temp.eatChessIndex, temp.x, temp.y);
-
-                                        }
                                     }
 
                                 }
-                                setMyTurn(true);
+
                                 repaint();
-                            } else if ("refuse".equals(array[0])) {
-                                JOptionPane.showConfirmDialog(null, "对方拒绝了你的悔棋要求");
                             }
 
-                        }//flag==yrue
+                    } else if ("agree".equals(array[0])) {
+                                //对方同意悔棋
+                        JOptionPane.showConfirmDialog(null, "对方同意了你的悔棋要求");
+                        node temp = list.get(list.size() - 1);
+                        list.remove(list.size() - 1);
+                        if (localPlayer == RED_PLAYER) {
+
+                            if (temp.index >= 16) {
+                                //上一步是我下的，需要回退1步
+                                rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+                                }
+                            } else {
+                                //上一步是对方下的，需要回退2步
+                                rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+                                }
+                                //第二次回退
+                                temp = list.get(list.size() - 1);
+                                list.remove(list.size() - 1);
+
+                                rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+                                }
+
+                            }
+
+                        } else {
+                            //如果我是黑方
+                            if (temp.index < 16) {
+                                //回退一步
+                                rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+                                }
+                            } else {
+                                //上一步是对方下的，需要回退1步
+                                rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+                                }
+
+                                temp = list.get(list.size() - 1);
+                                list.remove(list.size() - 1);
+
+                                rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
+                                if (temp.eatChessIndex != -1) {
+                                    //上一步吃了子,将被吃子重新放回棋盘
+                                    resetChess(temp.eatChessIndex, temp.x, temp.y);
+
+                                }
+                            }
+
+                        }
+                        setMyTurn(true);
+                        repaint();
+                     } else if ("refuse".equals(array[0])) {
+                    JOptionPane.showConfirmDialog(null, "对方拒绝了你的悔棋要求");
+                    }
+
             }
-            }catch(Exception e){
-                e.printStackTrace();
-            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+}
