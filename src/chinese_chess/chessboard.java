@@ -8,41 +8,84 @@ import java.awt.event.MouseEvent;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-
 import java.util.ArrayList;
-
-
-//github上传2次都失败？？？？？？？
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
- * {@code chessboard} 棋盘类：<br/>
- * 定义一个数组存储32个棋子对象。二维数组map保存了当前棋子的布局。<br/>
- * map[x][y]=i表示棋盘第x行y列是棋子i,等于-1说明此处为空。<br/>
- * 声明arrayList<node>对象list用于保存每步棋的信息.<br/>
+ * {@code chessboard} 棋盘类.继承JPenal，实现接口
  */
-
 public class chessboard extends JPanel implements Runnable {
     public static final int RED_PLAYER = 1;
     public static final int BLACK_PLAYER = 0;
+    /**
+     *  定义一个数组存储32个棋子对象。
+     */
     public chess[] chess = new chess[32];
-    public int[][] map = new int[9][8];
-    public Image bufferImage;   //？？？？？？？还未用到
+    /**
+     *  二维数组map保存了当前棋子的布局.
+     */
+    public int[][] map = new int[10][9];
+    public Image bufferImage;
+    /**
+     *  第一次点击的棋子
+     */
     private chess firstChess = null;
+    /**
+     *  第二次点击的棋子
+     */
     private chess secondChess = null;
-    private boolean isFirstClick = true;//是否第一次点击
-    private int x1, y1, x2, y2; //保存第一次第二次选中的坐标
-    private int tempX, tempY;      //是一个临时变量
-    private boolean isMyTurn = true;//是否自己执子
-    public int localPlayer = RED_PLAYER;//当前执子方
-    private String message = "";//提示信息
+    /**
+     *  是否第一次点击用isFirstClick表示.
+     */
+    private boolean isFirstClick = true;
+    /**
+     *  保存第一次第二次选中的坐标
+     */
+    private int x1, y1, x2, y2;
+    /**
+     *   临时变量
+     */
+    private int tempX, tempY;
+    /**
+     *  是否自己的回合
+     */
+    private boolean isMyTurn = true;
+    /**
+     *  定义当前执子玩家为红方
+     */
+    public int localPlayer = RED_PLAYER;
+    /**
+     *  用于发送信息
+     */
+    private String message = "";
+    /**
+     *
+     */
     private boolean flag = false;
-    private int otherPort = 3003; //外部端口
-    private int myPort = 3004;  //本地端口
-    public ArrayList<node> list = new ArrayList<node>();//存储棋盘
-    private String ip = "127.0.0.3"; //目标ip
+    /**
+     *  定义联机电脑的端口
+     */
+    private int otherPort = 3003;
+    /**
+     * 定义自己的端口
+     */
+    private int myPort = 3004;
+    /**
+     *  声明ArrayList<node>对象list用于保存每步棋的信息.
+     *  不必指定起数组的长度，它可以动态的增加素组的长度.
+     *  可以存储不同的类型的数据，他会把他所有的元素都当做object来处理.
+     */
+    public ArrayList<node> list = new ArrayList<node>();
+    /**
+     *  定义联机目标的ip
+     *  ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！需要修改该值！！！！！！！！！！！！！！！
+     *  */
+    private String ip = "192.168.137.1";
 
     /**
-     * 对棋盘进行初始化，全部为-1，表示没有棋子
+     * {@code  initMap()} 对棋盘进行初始化，全部为-1，表示没有棋子.
      */
     private void initMap() {
         int i, j;
@@ -54,16 +97,17 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 棋盘构造方法对棋盘进行初始化，接着为棋盘添加鼠标监听
-     * 监听事件先判断是否自己执子，如果是自己执子，在判断是第几次点击
+     * {@code  chessboard()}棋盘构造方法：对棋盘进行初始化，接着为棋盘添加鼠标监听.<br/>
+     * 监听事件先判断是否自己执子，如果是自己执子，再判断是第几次点击.
      */
 
     public chessboard() {
         initMap();
-
-        String message = "程序处于等待联机状态！";
-        addMouseListener(new MouseAdapter() {       //不太懂
+       message = "程序处于等待联机状态！";
+        //MouseAdapter 适配器
+        addMouseListener(new MouseAdapter() {
             @Override
+            //单击鼠标时调用
             public void mouseClicked(MouseEvent e) {
                 if (!isMyTurn) {
                     message = "现在是对方走棋";
@@ -75,29 +119,29 @@ public class chessboard extends JPanel implements Runnable {
             }
 
             /**
-             * {@code selectedchess(MouseEvent e)}作用
-             * （1）如果是第一次点击{
-             * 由点击处的像素坐标转换为棋盘坐标，并将该坐标上的棋子对象赋值给firstchess,用x1,y1记录坐标
-             * 如果选中了棋子，判断是否为敌方棋子
-             * 1.如果是提示“点成敌方棋子了”
-             * 2.如果不是，将firstClick改为false}
-             * （2）如果是第二次点击{
-             * 由点击处的像素坐标转换为棋盘坐标，并将该坐标上的棋子对象赋值给secondchess,用x1,y1记录坐标
-             * 如果第二次选择的棋子是自己的，将该棋子对象重新赋值给firstClick(重新选中棋子)
-             * 如果第二次没有选中棋子，判断是否可以走棋{
-             * 1. 如果isAbleToMove(firstChess, x2, y2))返回true，说明可以走棋，变更棋盘和棋子信息，并进行记录
-             * 发送倒置后的棋子信息给对方，重置isFirstClick为true，
-             * 2.否则说明不符合走棋规则，修改信息为“不符合走棋规则”
-             * 3.如果选中的是对方棋子，判断是否可以走棋
-             * a.如果isAbleToMove(firstChess, x2, y2))返回true，说明可以吃棋，变更棋盘和棋子信息，并进行记录
-             * 发送倒置后的棋子信息给对方，重置isFirstClick为true，同时判断吃掉的是不是"帅"或者"将"
-             * 如果是发送输赢信息并结束比赛，将isMyTurn改为false}
-             * b.否则说明不能吃棋，修改信息为”不能吃棋“}
+             * {@code selectedchess(MouseEvent e)}通过鼠标点击选择棋子<br/>
+             * <p>（1）如果是第一次点击{<br/>
+             *      由点击处的像素坐标转换为棋盘坐标，并将该坐标上的棋子对象赋值给firstchess,用x1,y1记录坐标<br/>
+             *      如果选中了棋子，判断是否为敌方棋子<br/>
+             *     1.如果是提示“点成敌方棋子了”<br/>
+             *     2.如果不是，将firstClick改为false}</p>
+             *<p>（2）如果是第二次点击{<br/>
+             *      由点击处的像素坐标转换为棋盘坐标，并将该坐标上的棋子对象赋值给secondchess,用x1,y1记录坐标<br/>
+             *      如果第二次选择的棋子是自己的，将该棋子对象重新赋值给firstClick(重新选中棋子)<br/>
+             *      如果第二次没有选中棋子，判断是否可以走棋{<br/>
+             *     1. 如果isAbleToMove(firstChess, x2, y2))返回true，说明可以走棋，变更棋盘和棋子信息，并进行记录<br/>
+             *      发送倒置后的棋子信息给对方，重置isFirstClick为true，<br/>
+             *     2.否则说明不符合走棋规则，修改信息为“不符合走棋规则”<br/>
+             *     3.如果选中的是对方棋子，判断是否可以走棋<br/>
+             *          a.如果isAbleToMove(firstChess, x2, y2))返回true，说明可以吃棋，变更棋盘和棋子信息，并进行记录<br/>
+             *          发送倒置后的棋子信息给对方，重置isFirstClick为true，同时判断吃掉的是不是"帅"或者"将"<br/>
+             *          如果是发送输赢信息并结束比赛，将isMyTurn改为false}<br/>
+             *          b.否则说明不能吃棋，修改信息为”不能吃棋“}</p>
              */
-
             private void selectedchess(MouseEvent e) {
                 int index1, index2;
                 if (isFirstClick) {
+                    //e.getX()，e.getY()得到鼠标点击的坐标
                     firstChess = analyse(e.getX(), e.getY());
                     x1 = tempX;
                     y1 = tempY;
@@ -112,8 +156,10 @@ public class chessboard extends JPanel implements Runnable {
                     secondChess = analyse(e.getX(), e.getY());
                     x2 = tempX;
                     y2 = tempY;
-                    if (secondChess != null) {   //如果第二次选中了棋子
-                        if (secondChess.player == localPlayer) {//第二次选中了我方棋子，对第一次点击的棋子进行更换
+                    if (secondChess != null) {
+                        //如果第二次选中了棋子
+                        if (secondChess.player == localPlayer) {
+                            //第二次选中了我方棋子，对第一次点击的棋子进行更换
                             firstChess = secondChess;
                             x1 = tempX;
                             y1 = tempY;
@@ -121,23 +167,26 @@ public class chessboard extends JPanel implements Runnable {
                             return;
                         }
                     }
-                    if (secondChess == null) {  //点击空处，判断是否可以走棋
+                    if (secondChess == null) {
+                        //点击空处，判断是否可以走棋
                         if (isAbleToMove(firstChess, x2, y2)) {
                             index1 = map[x1][y1];
                             map[x1][y1] = -1;
                             map[x2][y2] = index1;
                             chess[index1].setPoint(x2, y2);
-                            send("move" + "|" + index1 + "|" + (9 - x2) + "|" + (8 - y2) + "|" + (9 - x1) + "|" + (8 - y1) + "|" + "-1");  ///????，推测是UDP协议发送棋子变更信息
-                            list.add(new node(index1, x2, y2, x1, y1, -1));//存储我方下棋信息
+                            send("move" + "|" + index1 + "|" + (9 - x2) + "|" + (8 - y2) + "|" + (9 - x1) + "|" + (8 - y1) + "|" + "-1");
+                            //存储我方下棋信息
+                            list.add(new node(index1, x2, y2, x1, y1, -1));
                             isFirstClick = true;
                             repaint();
-                            setMyTurn(false);  //还没有写
+                            setMyTurn(false);
                         } else {
                             message = "不符合走棋规则";
                         }
                         return;
                     }
-                    if (secondChess != null && isAbleToMove(firstChess, x2, y2)) {  //是否能吃棋
+                    //是否能吃棋
+                    if (secondChess != null && isAbleToMove(firstChess, x2, y2)) {
                         isFirstClick = true;
                         index1 = map[x1][y1];
                         index2 = map[x2][y2];
@@ -148,13 +197,15 @@ public class chessboard extends JPanel implements Runnable {
                         repaint();
                         send("move" + "|" + index1 + "|" + (9 - x2) + "|" + (8 - y2) + "|" + (9 - x1) + "|" + (8 - y1) + "|" + index2 + "|");
                         list.add(new node(index1, x2, y2, x1, y1, index2));
-                        if (index2 == 0) {      //将被吃掉
+                        if (index2 == 0) {
+                            //将被吃掉
                             message = "红方赢了";
                             JOptionPane.showConfirmDialog(null, "红方赢了", "提示", JOptionPane.DEFAULT_OPTION);
                             send("succ" + "|" + "红方赢了" + "|");
                             return;
                         }
-                        if (index2 == 16) {      //帅被吃掉
+                        if (index2 == 16) {
+                            //帅被吃掉
                             message = "黑方赢了";
                             JOptionPane.showConfirmDialog(null, "黑方赢了", "提示", JOptionPane.DEFAULT_OPTION);
                             send("succ" + "|" + "黑方赢了" + "|");
@@ -168,45 +219,49 @@ public class chessboard extends JPanel implements Runnable {
             }
 
             /**
-             * {@code anaysle(int x,int y)}作用
-             * 通过点击的像素坐标和棋盘坐标的小矩形进行匹配，如果点位于矩形内，说明点击了该坐标
+             * {@code anaysle(int x,int y)}分析是否点击了某坐标<br/>
+             * 通过点击的像素坐标和棋盘坐标的小矩形进行匹配，如果点位于矩形内，说明点击了该坐标.
              */
             private chess analyse(int x, int y) {
                 int leftX = 28;
                 int leftY = 20;
-                int index_x = -1;
-                int index_y = -1;
-                for (int i = 0; i < 9; i++) {
-                    for (int j = 0; j < 8; j++) {
-                        Rectangle r = new Rectangle(leftX + j * 62, leftY + i * 58, 50, 50);
+                int indexX = -1;
+                int indexY = -1;
+                for (int i = 0; i <= 9; i++) {
+                    for (int j = 0; j <=8; j++) {
+                        Rectangle r = new Rectangle(leftX + j * 62, leftY + i * 58, 40, 40);
                         if (r.contains(x, y)) {
-                            index_x = i;
-                            index_y = j;
+                            indexX = i;
+                            indexY = j;
                             break;
                         }
                     }
                 }
-                tempX = index_x;
-                tempY = index_y;
-                if (index_x == -1 && index_y == -1) {
+                tempX = indexX;
+                tempY = indexY;
+                if (indexX == -1 && indexY == -1) {
                     return null;
                 }
-                if (map[index_x][index_y] == -1) {
+                if (map[indexX][indexY] == -1) {
                     return null;
                 } else {
-                    return chess[map[index_x][index_y]];
+                    return chess[map[indexX][indexY]];
                 }
             }
-        });
+        }
+        //鼠标监听结束
+        );
     }
 
     /**
-     * 判断是否是自己的棋子
+     * {@code isMyChess(int index)}判断是否是自己的棋子
      */
     private boolean isMyChess(int index) {
+        //棋子下标在0-15之间且当前执子方为黑方返回真
         if (index >= 0 && index <= 15 && localPlayer == BLACK_PLAYER) {
             return true;
         }
+        //棋子下标在16-31之间且当前执子方为红方返回真
         if (index >= 16 && index <= 31 && localPlayer == RED_PLAYER) {
             return true;
         }
@@ -214,7 +269,7 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 判段是否是自己的回合
+     *{@code setMyTurn(boolean b)} 设定是否是自己的回合
      */
     private void setMyTurn(boolean b) {
         isMyTurn = b;
@@ -226,7 +281,8 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 将棋子回退到上一步，并清空棋子未退回前的棋盘位置信息
+     * {@code rebackChess(int index, int x, int y, int oldX, int oldY)} 将棋子回退到上一步，<br/>
+     * 并清空棋子未退回前的棋盘位置信息
      */
     private void rebackChess(int index, int x, int y, int oldX, int oldY) {
         chess[index].setPoint(oldX, oldY);
@@ -235,7 +291,7 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 将吃掉的一个棋子重新放回棋盘
+     * {@code resetChess(int index, int x, int y) }将吃掉的一个棋子重新放回棋盘
      */
     private void resetChess(int index, int x, int y) {
         int temp = index < 16 ? BLACK_PLAYER : RED_PLAYER;
@@ -245,38 +301,29 @@ public class chessboard extends JPanel implements Runnable {
                 name = "将";
                 break;
             case 1:
-                ;
             case 2:
                 name = "士";
                 break;
             case 3:
-                ;
             case 4:
                 name = "象";
                 break;
             case 5:
-                ;
             case 6:
                 name = "马";
                 break;
             case 7:
-                ;
             case 8:
                 name = "车";
                 break;
             case 9:
-                ;
             case 10:
                 name = "炮";
                 break;
             case 11:
-                ;
             case 12:
-                ;
             case 13:
-                ;
             case 14:
-                ;
             case 15:
                 name = "卒";
                 break;
@@ -284,38 +331,29 @@ public class chessboard extends JPanel implements Runnable {
                 name = "帅";
                 break;
             case 17:
-                ;
             case 18:
                 name = "仕";
                 break;
             case 19:
-                ;
             case 20:
                 name = "相";
                 break;
             case 21:
-                ;
             case 22:
                 name = "马";
                 break;
             case 23:
-                ;
             case 24:
                 name = "车";
                 break;
             case 25:
-                ;
             case 26:
                 name = "炮";
                 break;
             case 27:
-                ;
             case 28:
-                ;
             case 29:
-                ;
             case 30:
-                ;
             case 31:
                 name = "兵";
                 break;
@@ -327,22 +365,37 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 局后将所有棋子和棋盘重画显示
+     * {@code startJoin(String ip, int otherPort, int myPort) }输入需要联机的ip，2台电脑的端口，开始加入
      */
-    private void startJoin(String ip, int otherPort, int myPort) {
+     public void startJoin(String ip, int otherPort, int myPort) {
         flag = true;
         this.otherPort = otherPort;
         this.myPort = myPort;
         this.ip = ip;
         System.out.println("能帮我链接到" + ip + "吗？");
         send("join|");
-        Thread th = new Thread((this));
-        th.start();
+        //用线程池创建线程
+        //  corePoolSize： 核心池的大小, 或者说线程池维护线程的最少数量
+        //  maximumPoolSize： 线程池中线程的最大数量
+        //  keepAliveTime： 线程池维护线程所允许的空闲时间
+        //  unit： 线程池维护线程所允许的空闲时间的单位
+        //  workQueue： 线程池所使用的缓冲队列
+        //  handler： 线程池对拒绝任务的处理策略
+
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
+                3,6,2, TimeUnit.SECONDS ,
+                new ArrayBlockingQueue<Runnable>(1),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+         threadPoolExecutor.execute(this);
+
+        //Thread th = new Thread((this));
+        // th.start();
     }
 
     /**
-     * 联机成功后，{@code tartNewGame(int player)}根据玩家执子颜色调用initChess()初始化棋子布局
-     * 布局为下红上黑，若玩家执黑子，则调用reverseBoard（）对棋子位子进行对调，变成下黑上红
+     * 联机成功后，{@code tartNewGame(int player)}根据玩家执子颜色调用initMap(),initChess()初始化棋子布局<br/>
+     * 布局为下红上黑，若玩家执黑子，则调用reverseBoard（）对棋子位子进行对调，变成下黑上红<br/>
      * 布局后将所有棋子和棋盘重画显示
      */
     public void startNewGame(int player) {
@@ -355,7 +408,7 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 初始化棋子布局
+     * {@code initChess()}初始化棋子布局
      */
     private void initChess() {
         //黑方棋子
@@ -386,36 +439,36 @@ public class chessboard extends JPanel implements Runnable {
             map[3][i * 2] = 11 + i;
         }
         //红方棋子
-        chess[16] = new chess(BLACK_PLAYER, "帅", 9, 4);
+        chess[16] = new chess(RED_PLAYER, "帅", 9, 4);
         map[9][4] = 16;
-        chess[17] = new chess(BLACK_PLAYER, "仕", 9, 3);
+        chess[17] = new chess(RED_PLAYER, "仕", 9, 3);
         map[9][3] = 17;
-        chess[18] = new chess(BLACK_PLAYER, "仕", 9, 5);
+        chess[18] = new chess(RED_PLAYER, "仕", 9, 5);
         map[9][5] = 18;
-        chess[19] = new chess(BLACK_PLAYER, "相", 9, 2);
+        chess[19] = new chess(RED_PLAYER, "相", 9, 2);
         map[9][2] = 19;
-        chess[20] = new chess(BLACK_PLAYER, "相", 9, 6);
+        chess[20] = new chess(RED_PLAYER, "相", 9, 6);
         map[9][6] = 20;
-        chess[21] = new chess(BLACK_PLAYER, "马", 9, 1);
+        chess[21] = new chess(RED_PLAYER, "马", 9, 1);
         map[9][1] = 21;
-        chess[22] = new chess(BLACK_PLAYER, "马", 9, 7);
+        chess[22] = new chess(RED_PLAYER, "马", 9, 7);
         map[9][7] = 22;
-        chess[23] = new chess(BLACK_PLAYER, "车", 9, 0);
+        chess[23] = new chess(RED_PLAYER, "车", 9, 0);
         map[9][0] = 23;
-        chess[24] = new chess(BLACK_PLAYER, "车", 9, 8);
+        chess[24] = new chess(RED_PLAYER, "车", 9, 8);
         map[9][8] = 24;
-        chess[25] = new chess(BLACK_PLAYER, "炮", 7, 1);
+        chess[25] = new chess(RED_PLAYER, "炮", 7, 1);
         map[7][1] = 25;
-        chess[26] = new chess(BLACK_PLAYER, "炮", 7, 7);
+        chess[26] = new chess(RED_PLAYER, "炮", 7, 7);
         map[7][7] = 26;
         for (int i = 0; i < 5; i++) {
-            chess[27 + i] = new chess(BLACK_PLAYER, "兵", 6, i * 2);
+            chess[27 + i] = new chess(RED_PLAYER, "兵", 6, i * 2);
             map[6][i * 2] = 27 + i;
         }
     }
 
     /**
-     * 翻转棋局
+     * {@code reverseBoard()}翻转棋局
      */
     private void reverseBoard() {
         for (int i = 0; i < 32; i++) {
@@ -433,13 +486,13 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 使用paint（Graphics g）重画游戏中的背景棋盘和棋子对象以及提示消息
+     *{@code  paint(Graphics g)} 重画游戏中的背景棋盘和棋子对象以及提示消息
      */
 
     @Override
     public void paint(Graphics g) {
         g.clearRect(0, 0, this.getWidth(), this.getHeight());
-        Image backGroundImage = Toolkit.getDefaultToolkit().getImage("F:/idea_test/images/chessBorad.png");
+        Image backGroundImage = Toolkit.getDefaultToolkit().getImage("F:/idea_test/images/chessBoard.png");
         g.drawImage(backGroundImage, 0, 0, 600, 600, this);
         for (int i = 0; i < 32; i++) {
             if (chess[i] != null) {
@@ -456,10 +509,8 @@ public class chessboard extends JPanel implements Runnable {
     }
 
     /**
-     * 判断落子是否正确，可以落子返回真，不能落子返回假.
+     * {@code  isAbleToMove(chess firstChess, int x, int y)}判断各棋子落子是否正确，可以落子返回真，不能落子返回假.
      */
-
-
     private boolean isAbleToMove(chess firstChess, int x, int y) {
         int oldX, oldY;
         oldX = firstChess.x;
@@ -507,6 +558,8 @@ public class chessboard extends JPanel implements Runnable {
             return true;
         }
         //判断象/相走棋是否正确
+        //此处不能从第7行返回初始位置，可能代码逻辑有错误！！！！！！！！！！！！！！！！！！！！！！！！！
+        //一个未修正的错误，请改正
         if ("象".equals(chessName) || "相".equals(chessName)) {
             // 如果象/相直走
             if ((x - oldX) * (y - oldY) == 0) {
@@ -517,7 +570,7 @@ public class chessboard extends JPanel implements Runnable {
                 return false;
             }
             //如果象/相超出楚河汉界
-            if ((x < 5 && "象".equals(chessName) || (x > 4 && "相".equals(chessName)))) {
+            if (x < 5) {
                 return false;
             }
             //如果象/相眼被堵
@@ -733,12 +786,13 @@ public class chessboard extends JPanel implements Runnable {
 
 
     /**
-     *
+     *{@code  send(String str)}发送消息
      */
     public void send(String str) {
         DatagramSocket s = null;
         try {
             s = new DatagramSocket();
+            //一个缓冲区
             byte[] buffer;
             buffer = new String(str).getBytes();
             InetAddress ia = InetAddress.getByName(java.lang.String.valueOf(ip));
@@ -755,17 +809,25 @@ public class chessboard extends JPanel implements Runnable {
             }
         }
     }
+    /**
+     *{@code  run()}重写run()
+     */
     @Override
     public void run() {
         try {
             System.out.println("我是客户端，我绑定的端口是" +myPort);
+            //UDP协议
+            // 创建数据报套接字与服务端进行通信连接，并发送和接受数据报套接字。
             DatagramSocket s = new DatagramSocket(myPort);
             byte[] data = new byte[100];
+            //dgp包含了一个对保存自寻址数据报信息的字节数组的引用，length表示字节数组的长度
             DatagramPacket dgp = new DatagramPacket(data, data.length);
             while (flag) {
+                //接收数据报
                 s.receive(dgp);
                 String strData = new String(data);
                 String[] array = new String[6];
+                //split（）根据匹配给定的正则表达式来拆分字符串，“|”为转义字符，使用时要加\\
                 array = strData.split("\\|");
                 //如果对局被加入，我是黑方
                 if ("join".equals(array[0])) {
@@ -790,6 +852,8 @@ public class chessboard extends JPanel implements Runnable {
                     } else if ("succ".equals(array[0])) {
                         if ("黑方赢了".equals(array[1])) {
                             if (localPlayer == RED_PLAYER) {
+                                //showConfirmDialog()
+                                // 带有自定义选择按钮的选择提示框，按钮和提示消息均可自定义
                                 JOptionPane.showConfirmDialog(null, "黑方赢了，你可以重新开始", "你输了", JOptionPane.DEFAULT_OPTION);
                             } else {
                                 JOptionPane.showConfirmDialog(null, "黑方赢了，你可以重新开始", "你赢了", JOptionPane.DEFAULT_OPTION);
@@ -804,7 +868,7 @@ public class chessboard extends JPanel implements Runnable {
                         }
                         message = "你可以重新开局";
                         //可以点击开始按钮
-                        gameclient.buttonStart.setEnable(true);
+                        gameclient.buttonStart.setEnabled(true);
                     } else if ("move".equals(array[1])) {
                             //对方的走棋信息
                             System.out.println("接受信息" + array[0] + "|" + array[1] + "|" + array[2] + "|" + array[3] + "|" + array[4] + "|" + array[5] + "|" + array[6] + "|");
@@ -818,36 +882,37 @@ public class chessboard extends JPanel implements Runnable {
                             int eatChessIndex = Integer.parseInt(array[6]);
                             list.add(new node(index, x2, y2, oldX, oldY, eatChessIndex));
                             message = "对方将棋子\"" + chess[index].typeName + "\"移动到了(" + x2 + "," + y2 + ")\n现在该你走棋";
+                            //将棋子从x1y1，要移动到x2y2。
                             chess c = chess[index];
                             x1 = c.x;
                             y1 = c.y;
-
                             index = map[x1][y1];
-
                             int index2 = map[x2][y2];
                             map[x1][y1] = -1;
                             map[x2][y2] = index;
                             chess[index].setPoint(x2, y2);
+                            //移动完成后，将索引index2数据清空
+
                             if (index2 != -1) {
                                 chess[index2] = null;
                             }
                             repaint();
                             isMyTurn = true;
                     } else if ("quit".equals(array[0])) {
-                            JOptionPane.showConfirmDialog(null, "对方退出了，游戏结束！", "提示", JOptionPane.DEFAULT_OPTIONO);
+                            JOptionPane.showConfirmDialog(null, "对方退出了，游戏结束！", "提示", JOptionPane.DEFAULT_OPTION);
                             message = "对方退出了，游戏结束！";
                             gameclient.buttonStart.setEnabled(true);
                     } else if ("lose".equals(array[0])) {
-                            JOptionPane.showConfirmDialog(null, "恭喜你，对方认输了！", "你赢了", JOptionPane.DEFAULT_OPTIONO);
+                            JOptionPane.showConfirmDialog(null, "恭喜你，对方认输了！", "你赢了", JOptionPane.DEFAULT_OPTION);
                             setMyTurn(false);
                             gameclient.buttonStart.setEnabled(true);
                     } else if ("ask".equals(array[0])) {
-
                             String msg = "对方请求悔棋，是否同意？";
+                            //yes或者no选择框
                             int type = JOptionPane.YES_NO_OPTION;
-
                             String title = "请求悔棋";
                             int choice = 0;
+                            //返回0或者1
                             choice = JOptionPane.showConfirmDialog(null, msg, title, type);
                             if (choice == 1) {
                                 send("refuse| ");
@@ -856,7 +921,9 @@ public class chessboard extends JPanel implements Runnable {
                                 message = "同意对方悔棋，对方正在思考";
                                 setMyTurn(false);
 
+                                //获取list容器最后一个元素的值
                                 node temp = list.get(list.size() - 1);
+                                //删除list容器最后一个元素的值
                                 list.remove(list.size() - 1);
                                 //如果我是红方
                                 if (localPlayer == RED_PLAYER) {
@@ -865,11 +932,12 @@ public class chessboard extends JPanel implements Runnable {
                                         //上一步是我下的，需要回退2步
                                         rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
                                         if (temp.eatChessIndex != -1) {
+                                            //上一步吃了子,将被吃子重新放回棋盘
                                             resetChess(temp.eatChessIndex, temp.x, temp.y);
                                         }
                                         temp = list.get(list.size() - 1);
                                         list.remove(list.size() - 1);
-
+                                        //上一步是对方下的，需要回退1步
                                         rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
                                         if (temp.eatChessIndex != -1) {
                                             resetChess(temp.eatChessIndex, temp.x, temp.y);
@@ -886,14 +954,14 @@ public class chessboard extends JPanel implements Runnable {
                                 } else {
                                     //如果我是黑方
                                     if (temp.index < 16) {
-                                        //回退一步
+                                        //上一步是我下的，需要回退2步
                                         rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
                                         if (temp.eatChessIndex != -1) {
                                             resetChess(temp.eatChessIndex, temp.x, temp.y);
                                         }
                                         temp = list.get(list.size() - 1);
                                         list.remove(list.size() - 1);
-
+                                        //上一步是对方下的，需要回退1步
                                         rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
                                         if (temp.eatChessIndex != -1) {
                                             //上一步吃了子,将被吃子重新放回棋盘
@@ -920,7 +988,6 @@ public class chessboard extends JPanel implements Runnable {
                         node temp = list.get(list.size() - 1);
                         list.remove(list.size() - 1);
                         if (localPlayer == RED_PLAYER) {
-
                             if (temp.index >= 16) {
                                 //上一步是我下的，需要回退1步
                                 rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
@@ -933,7 +1000,6 @@ public class chessboard extends JPanel implements Runnable {
                                 if (temp.eatChessIndex != -1) {
                                     resetChess(temp.eatChessIndex, temp.x, temp.y);
                                 }
-                                //第二次回退
                                 temp = list.get(list.size() - 1);
                                 list.remove(list.size() - 1);
 
@@ -947,13 +1013,13 @@ public class chessboard extends JPanel implements Runnable {
                         } else {
                             //如果我是黑方
                             if (temp.index < 16) {
-                                //回退一步
+                                //上一步是我下的，需要回退1步
                                 rebackChess(temp.index, temp.x, temp.y, temp.oldX, temp.oldY);
                                 if (temp.eatChessIndex != -1) {
                                     resetChess(temp.eatChessIndex, temp.x, temp.y);
                                 }
                             } else {
-                                //上一步是对方下的，需要回退1步
+                                //上一步是对方下的，需要回退2步
                                 rebackChess(temp.eatChessIndex, temp.x, temp.y, temp.oldX, temp.oldY);
                                 if (temp.eatChessIndex != -1) {
                                     resetChess(temp.eatChessIndex, temp.x, temp.y);
@@ -979,7 +1045,14 @@ public class chessboard extends JPanel implements Runnable {
 
             }
 
-        } catch (Exception e) {
+        }
+       /** 当try语句中出现异常时，会执行catch中的语句，
+        * java运行时系统会自动将catch括号中的Exception e 初始化，
+        * 也就是实例化Exception类型的对象。e是此对象引用名称。
+        * 然后e（引用）会自动调用Exception类中指定的方法，也就出现了e.printStackTrace() ;。
+        * printStackTrace()方法的意思是：在命令行打印异常信息在程序中出错的位置及原因。
+        */
+        catch (Exception e) {
             e.printStackTrace();
         }
     }
