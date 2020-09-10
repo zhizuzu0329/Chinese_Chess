@@ -9,6 +9,7 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.*;
 
+
 public class gameclient extends JFrame{
 
     static chessboard gamePanel = new chessboard();
