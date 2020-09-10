@@ -21,6 +21,7 @@ import javax.swing.JPanel;
  * chessImage;  棋子所用的图.<br/>
  * leftX=30,leftY=35;   水平边缘偏移和垂直边缘偏移.<br/>
  */
+
 public class chess {
     public static final  int RED_PLAYER = 1;
     public static final  int BLACK_PLAYER = 0;

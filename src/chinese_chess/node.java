@@ -6,6 +6,7 @@ package chinese_chess;
  *  oldX,oldY 表示棋子移动前位于（oldX.oldY）.<br/>
  *  eatChessIndex 表示被吃掉的棋子下标.<br/>
  */
+
 public class node {
     int index;
     int x,y;

@@ -20,6 +20,7 @@ public class gameclient extends JFrame{
     public static final int RED_PLAYER = 1;
     public static final int BLACK_PLAYER = 0;
 
+
     public gameclient(){
         JPanel panelBottom = new JPanel(new FlowLayout());
         panelBottom.add(new JLabel("输入对方IP:"));

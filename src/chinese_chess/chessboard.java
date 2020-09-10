@@ -1052,6 +1052,7 @@ public class chessboard extends JPanel implements Runnable {
         * 然后e（引用）会自动调用Exception类中指定的方法，也就出现了e.printStackTrace() ;。
         * printStackTrace()方法的意思是：在命令行打印异常信息在程序中出错的位置及原因。
         */
+
         catch (Exception e) {
             e.printStackTrace();
         }
