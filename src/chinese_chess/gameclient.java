@@ -92,8 +92,6 @@ public class gameclient extends JFrame{
 
             }
         });
-
-
         buttonStart.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e){
@@ -113,7 +111,6 @@ public class gameclient extends JFrame{
         });
 
     }
-
     public static void main(String[] args) {
         new gameclient();
     }
